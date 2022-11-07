@@ -18,6 +18,8 @@ fn main() {
         "Snake",
         [to_coord_u32(width), to_coord_u32(height)],
     ).exit_on_esc(true)
+    // .automatic_close(false)
+    // .resizable(false)
     .build()
     .unwrap();
     // println!("Hello, world!");
@@ -32,7 +34,6 @@ fn main() {
             clear(BLACK_COLOR, g);
             game.draw(&c, g);
         });
-
         event.update(|arg| {
             game.update(arg.dt)
         });

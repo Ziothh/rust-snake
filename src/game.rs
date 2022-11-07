@@ -10,6 +10,7 @@ use crate::helpers::draw::{draw_block, draw_rect};
 
 const FOOD_COLOR: Color = [0.80, 0.00, 0.00, 1.0];
 const BORDER_COLOR: Color = [0.00, 0.00, 0.00, 1.0];
+const GAMEWAIT_COLOR: Color = [0.00, 0.00, 0.00, 0.7];
 const GAMEOVER_COLOR: Color = [0.90, 0.00, 0.00, 0.5];
 
 const MOVING_PERIOD: f64 = 0.1;
@@ -25,6 +26,7 @@ pub struct Game {
     width: i32,
     height: i32,
 
+    game_started: bool,
     game_over: bool,
     waiting_time: f64,
 
@@ -42,12 +44,17 @@ impl Game {
             food_y: 4,
             width,
             height,
+            game_started: false,
             game_over: false,
             rng: thread_rng()
         };
     }
 
-    pub fn get_random_pos(&mut self) -> (i32, i32) {
+    fn get_random_pos(&mut self) -> (i32, i32) {
+        /* 
+        There is still a small bug where on the start of the game
+        the snake could be placed on the same tile as the food.
+        */ 
         return (
             self.rng.gen_range(1..(self.width - 1)), 
             self.rng.gen_range((1..(self.width - 1)))
@@ -55,17 +62,25 @@ impl Game {
     }
 
     pub fn key_pressed(&mut self, key: Key) {
-        if (self.game_over) {return;}
+        if (self.game_over) { return; }
 
         let dir = match key {
             Key::Up => Some(Direction::Up),
             Key::Down => Some(Direction::Down),
             Key::Left => Some(Direction::Left),
             Key::Right => Some(Direction::Right),
+            Key::Z => Some(Direction::Up),
+            Key::S => Some(Direction::Down),
+            Key::Q => Some(Direction::Left),
+            Key::D => Some(Direction::Right),
             _ => None,
         };
 
-        if (dir.unwrap() == self.snake.get_head_direction().opposite()) {return;}
+        if (dir.is_none()) {return;}
+
+        if (!self.game_started) {
+            self.game_started = true;
+        } else if (dir.unwrap() == self.snake.get_head_direction().opposite()) {return;}
 
         self.update_snake(dir);
     }
@@ -108,6 +123,9 @@ impl Game {
         if (self.game_over) {
             draw_rect(GAMEOVER_COLOR, 0, 0, self.width, self.height, ctx, g2d);
         }
+        else if (!self.game_started) {
+            draw_rect(GAMEWAIT_COLOR, 0, 0, self.width, self.height, ctx, g2d);
+        }
     }
 
     pub fn update(&mut self, delta_time: f64) {
@@ -115,9 +133,13 @@ impl Game {
 
         if (self.game_over) {
             if (self.waiting_time > RESTART_TIME) {
-                self.restart()
+                self.reset();
             }
 
+            return;
+        }
+
+        if (!self.game_started) {
             return;
         }
 
@@ -151,12 +173,13 @@ impl Game {
         return next_x > 0 && next_y > 0 && next_x < self.width - 1 && next_y < self.height - 1
     }
 
-    fn restart(&mut self) {
+    fn reset(&mut self) {
         let (snake_x, snake_y) = self.get_random_pos();
         self.snake = Snake::new(snake_x, snake_y);
         self.waiting_time = 0.0;
         self.food_exists = true;
         (self.food_x, self.food_y) = self.get_random_pos();
         self.game_over = false;
+        self.game_started = false;
     }
 }
